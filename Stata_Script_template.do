@@ -1,6 +1,5 @@
 * 4/13/2020
-* Authors:  Pablo Garriga
-*			Camille Semelet, csemelet@worldbank.org 
+* Authors:  Pablo Garriga, pablo_garriga@brown.edu; Camille Semelet, csemelet@worldbank.org 
 
 
 * SIMULATION of the COVID 19 impact on formal firms
