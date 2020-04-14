@@ -2,7 +2,7 @@
 The implication of COVID19 (Coronavirus) for formal firms (Replication codes)
 
 ### We created two versions of the code. The figures presented in the blog post are created with the R script. 
-### The survival estimates are only estiamted in Stata. If requested, we can write the R code to produce those regression estimates.
+### The survival estimates are only estimated in Stata. If requested, we can write the R code to produce those regression estimates.
 
 # Stata users: 
 	- Stata_Script_template.do : this do file runs the whole analysis including the survival model estimates and creates figures. 
