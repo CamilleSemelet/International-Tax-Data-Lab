@@ -23,18 +23,19 @@ clear
 set more off
  
 * Output
-global output " "  // <- FILL IN
+global output " " // <- FILL IN
 
 /* CALL ONE COUNTRY */
 
-import delimited using " ", clear // <- FILL IN
-
+import delimited using " ", clear  // <- FILL IN
 /******************************************************************************/
 /*							 PREPARATION 									  */
 /******************************************************************************/
 
 *** Cleaning and sampling 
-keep if turnover > 0 | !missing(turnover)
+*** Cleaning and sampling 
+keep if turnover > 0 & !missing(turnover)
+
 sum year
 local max = r(max)
 local beforelast = `max'-1
@@ -78,13 +79,11 @@ replace shock3050 = 1 if grthturnover < -30 & grthturnover >= -50
 gen shock50p = 0
 replace shock50p = 1 if grthturnover < -50
 
-* Lagged term 1
-foreach var in grthprofit profitmargin arcprofit logturnover shock1030 shock3050 shock50p{
-bys tax_id: gen l1_`var' = `var'[_n-1] if year == year[_n-1]+1
-}
-
 * Industry FE 
-encode section, gen(ind)
+egen ind = group(section)
+
+* Set data to Panel for lagged variables 
+xtset tax_id year
 
 /******************************************************************************/
 /*							 REGRESSION  									  */
@@ -96,50 +95,65 @@ local country = country
 local fe1 ib(freq).ind  // industry fe
 local fe2 ib(freq).year // year fe
 *
-local depvar "l1_shock1030 l1_shock3050 l1_shock50p"
+local depvar "L1.shock1030 L1.shock3050 L1.shock50p"
 *
 local spec groupvar() bdec(3) sdec(3) // Options
-cap drop predicted1 predicted2
+cap drop y_hat_1 y_hat_2
+*
 
 * REGRESSION TABLES
-
 	* One lag
-	eststo s1: reghdfe exit `depvar' l1_arcprofit l1_logturnover, absorb(`fe1' `fe2')
+	eststo s1: reghdfe exit `depvar' L1.arcprofit L1.logturnover, absorb(`fe1' `fe2')
 	#delimit;
-	outreg2 using "$output\lm_exit_`country'.xls", replace label keep(`depvar' l1_arcprofit l1_logturnover) ctitle("One lag") addtext(Sector FE, Yes, Year FE, Yes) `spec'
+	outreg2 using "$output\lm_exit_`country'.xls", replace label keep(`depvar' L1.arcprofit L1.logturnover) ctitle("One lag") addtext(Sector FE, Yes, Year FE, Yes) `spec'
 	title("Dependent variable is Exit (dummy)") ;
 	#delimit cr 
 	* Store and predict
 		predict y_hat_1
-		scalar b1_shock1030 = _b[l1_shock1030]
-		scalar b1_shock3050 = _b[l1_shock3050]
-		scalar b1_shock50p = _b[l1_shock50p]
-		scalar se1_shock1030 = _se[l1_shock1030]
-		scalar se1_shock3050 = _se[l1_shock3050]
-		scalar se1_shock50p = _se[l1_shock50p]
+		scalar b1_shock1030 = _b[L1.shock1030]
+		scalar b1_shock3050 = _b[L1.shock3050]
+		scalar b1_shock50p = _b[L1.shock50p]
+		scalar se1_shock1030 = _se[L1.shock1030]
+		scalar se1_shock3050 = _se[L1.shock3050]
+		scalar se1_shock50p = _se[L1.shock50p]
+	* One lag
+	eststo s3: reghdfe exit `depvar'  L1.arcprofit L1.logturnover L1.grthprofit, absorb(`fe1' `fe2')
+	outreg2 using "$output\lm_exit_`country'.xls", append label keep(`depvar' L1.arcprofit L1.logturnover L1.grthprofit) ctitle("One lag") addtext(Sector FE, Yes, Year FE, Yes) `spec'
+	* Store and predict
+		predict y_hat_2
+		scalar b2_shock1030 = _b[L1.shock1030]
+		scalar b2_shock3050 = _b[L1.shock3050]
+		scalar b2_shock50p = _b[L1.shock50p]
+		scalar se2_shock1030 = _se[L1.shock1030]
+		scalar se2_shock3050 = _se[L1.shock3050]
+		scalar se2_shock50p = _se[L1.shock50p]
 
+	
 /******************************************************************************/
 /*							 ESTIMATE & PREDICTION 		      				  */
 /******************************************************************************/
 
-gen b1_shock1030 = b1_shock1030 
-gen b1_shock3050 = b1_shock3050
-gen b1_shock50p = b1_shock50p
+* Estimates first model
+gen proba1_shock1030 = cond(shock1030 == 1, y_hat_1, y_hat_1 + b1_shock1030)
+gen proba1_shock3050 = cond(shock3050 == 1, y_hat_1, y_hat_1 + b1_shock3050)
+gen proba1_shock50p = cond(shock50p == 1, y_hat_1, y_hat_1 + b1_shock50p)
 
-bys year: egen predicted_1 = mean(y_hat_1)
+gen se1_shock1030 = se1_shock1030 
+gen se1_shock3050 = se1_shock3050
+gen se1_shock50p = se1_shock50p
 
-gen proba_shock1030 = predicted_1+b1_shock1030
-gen proba_shock3050 = predicted_1+b1_shock3050
-gen proba_shock50p = predicted_1+b1_shock50p
+* Estimates second model
+gen proba2_shock1030 = cond(shock1030 == 1, y_hat_2, y_hat_2 + b2_shock1030)
+gen proba2_shock3050 = cond(shock3050 == 1, y_hat_2, y_hat_2 + b2_shock3050)
+gen proba2_shock50p = cond(shock50p == 1, y_hat_2, y_hat_2 + b2_shock50p)
 
-gen se_shock1030 = se1_shock1030 
-gen se_shock3050 = se1_shock3050
-gen se_shock50p = se1_shock50p
+gen se2_shock1030 = se2_shock1030 
+gen se2_shock3050 = se2_shock3050
+gen se2_shock50p = se2_shock50p
 
-/* Keep second to last year results */
 keep if year == `beforelast'
 
-collapse (mean) predicted_1 proba_shock1030 proba_shock3050 proba_shock50p se_*
+collapse (mean) y_hat_1 y_hat_2 proba1_shock1030 proba1_shock3050 proba1_shock50p proba2_shock1030 proba2_shock3050 proba2_shock50p se1* se2*
 gen country = "`country'"
 
 ** Read the file in R or continue on stata to produce the graph.

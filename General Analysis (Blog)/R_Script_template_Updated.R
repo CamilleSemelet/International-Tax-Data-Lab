@@ -177,116 +177,91 @@ library(ggformula) ## geom_spline
   ## We assume that material inputs adjust first, and that firms only cut their wage bill if they are still unprofitable after this adjustment
   ## Firms will adjust their labor cost differently
   
-  ### 1 month scenario
-  # Case 1. firms that were already making losses in baseline
-  # Case 2. firms went from making profit in baseline to have losses in month 1
-  # Case 3. firms still make profit even after a 1-month-output loss
+  ## 1 months scenario
   
-  data_fig2 <- data_1 %>% drop_na(labor_inp)  
-
-    # Save profit margin at baseline
-  data_fig2$baseline_rate <- data_fig2$profit_margin
+  data_fig2 <- data_1 %>% drop_na(labor_inp)
+  data_fig2$factorloss <- 1 # Percentage of loss
+  ## Remove firms with 0 labor input ?? 
+  data_fig2 <- data_fig2[ which(data_fig2$labor_inp != 0),]
   
-  ## Simulate 1-month-output-loss
-  data_fig2$turnover <- data_fig2$turnover - (1/12)*(data_fig2$turnover)
-  # Adjustment for material costs first
-  data_fig2$costs <- data_fig2$costs - (1/12)*(data_fig2$material_inp)
+  data_fig2$fixedcost <- data_fig2$costs - data_fig2$material_inp - data_fig2$labor_inp
   
-  # Create hypothetical profits and profit rate if no adjustment in terms of labor costs is made
-  data_fig2$forecast_gross_tax_base <- data_fig2$turnover - data_fig2$costs
-  data_fig2$forecast_rate <- data_fig2$forecast_gross_tax_base/data_fig2$turnover 
-
-  # Categorize firms with cases 1, 2 or 3 by comparing baseline rate and hypothetical rate
-  data_fig2$cases[data_fig2$baseline_rate <= 0 ] <- 1
-  data_fig2$cases[data_fig2$baseline_rate > 0 & data_fig2$forecast_rate <= 0 ] <- 2
-  data_fig2$cases[data_fig2$baseline_rate > 0 & data_fig2$forecast_rate > 0 ] <- 3
+  ## Simulate 1-month-output-loss, material adjustment and labor adjustement
+  ## R - 1/12fR - c3 - c2 + 1/12fc2 - c1 + x1/12fc1, we want to find x:  
   
-  ### Adujst costs differently depending on cases
-  ## 1 Full adjustment: adjust by the size of the shock
-  data_fig2$new_costs <- data_fig2$costs - (1/12)*(data_fig2$labor_inp)
-  data_fig2$costs <- ifelse(data_fig2$cases == 1, data_fig2$new_costs, data_fig2$costs) 
-  # Store drop in labor costs
-  data_fig2$reduction_labor <- (1/12)*(data_fig2$labor_inp)
-
-  ## 2 Partial adjustment
-  # New optimal labor costs to have 0 losses
-  data_fig2$adjusted_labor <- data_fig2$costs - data_fig2$turnover 
-  # If reduction is more than 1/12 of original labor costs, then cap to 1/12
-  data_fig2$adjusted_labor <- ifelse(data_fig2$adjusted_labor > data_fig2$reduction_labor, data_fig2$reduction_labor, data_fig2$adjusted_labor)
-  # Recalculate total costs
-  data_fig2$costs <- ifelse(data_fig2$cases == 2, data_fig2$costs - data_fig2$adjusted_labor, data_fig2$costs) 
-  # Store drop in labor costs
-  data_fig2$reduction_labor <- ifelse(data_fig2$cases == 2, data_fig2$adjusted_labor, data_fig2$reduction_labor)
+  # A = R - 1/12R - c3 - c2 + 1/12c2
+  data_fig2$A <- data_fig2$turnover - data_fig2$factorloss*(1/12)*(data_fig2$turnover) - data_fig2$fixedcost - 
+    (data_fig2$material_inp) + data_fig2$factorloss*(1/12)*(data_fig2$material_inp)
   
-  ## 3 No adjusment
-  # Store drop in labor costs
-  data_fig2$reduction_labor <- ifelse(data_fig2$cases == 3, 0, data_fig2$reduction_labor)
-
-  # We will plot the drop in labor costs compared to baseline labor costs
-  data_fig2$newlabor_inp <- data_fig2$labor_inp - data_fig2$reduction_labor
-  data_fig2$ratio_labor <- 1 - (data_fig2$newlabor_inp/data_fig2$labor_inp)
-  # Change NAN (occurs when we divide 0/0) and Inf (occurs when we divide by 0) to 0
-  data_fig2$ratio_labor[is.infinite(data_fig2$ratio_labor)] <- 0
-  data_fig2$ratio_labor[is.nan(data_fig2$ratio_labor)] <- 0
-
+  ## x = factor of labor adjustment in order to break even
+  ## Set equation equal to Target = min {0, baseline profit}
+  data_fig2$Target <- pmin(0, data_fig2$gross_tax_base)
+  
+  # x = (c1 - A + Target) / ((1/12)*f*c1)
+  data_fig2$x <- (data_fig2$labor_inp + data_fig2$Target - data_fig2$A)/(data_fig2$factorloss*(1/12)*data_fig2$labor_inp)
+  
+  ## Some firms have labor input == 0, so create INF and NaN when we divide by 0. We replace x = NA for them.
+  data_fig2$x[is.na(data_fig2$x)] <- NA
+  data_fig2$x[is.infinite(data_fig2$x)] <- NA
+  summary(data_fig2$x)
+  
+  # We now have three cases:
+  # x <= 0: firms are still making profit after the shock and don't need to adjust their payroll
+  data_fig2$x[data_fig2$x < 0] <- 0
+  # 0 < x < 1: firms need to reduce their payroll by the factor x so that then can break even
+  # x >= 1: firms would need (more than) their total monthly payroll to break even
+  data_fig2$x[data_fig2$x > 1] <- 1
+  
+  data_fig2$ratio_labor <- (data_fig2$x*(1/12)*data_fig2$factorloss)
+  
+  summary(data_fig2$ratio_labor)
   ## Save 1-month-Scenario data in an object
-  scenario1 <- select(data_fig2, ratio_labor, labor_inp, reduction_labor)
-  scenario1$Scenario <- "1 month"
+  Scenario1 <- select(data_fig2, ratio_labor, labor_inp)
+  Scenario1$Scenario <- "1 month"
   
   ### 3 months scenario
+  
   data_fig2 <- data_1 %>% drop_na(labor_inp)  
+  data_fig2$factorloss <- 1 # Percentage of loss
   
-  # Save profit margin at baseline
-  data_fig2$baseline_rate <- data_fig2$profit_margin
+  ## Remove firms with 0 labor input ?? 
+  data_fig2 <- data_fig2[ which(data_fig2$labor_inp != 0),]
   
-  ## Simulate 3-month-output-loss
-  data_fig2$turnover <- data_fig2$turnover - (3/12)*(data_fig2$turnover)
-  # Adjustment for material costs first
-  data_fig2$costs <- data_fig2$costs - (3/12)*(data_fig2$material_inp)
+  data_fig2$fixedcost <- data_fig2$costs - data_fig2$material_inp - data_fig2$labor_inp
   
-  # Create hypothetical profits and profit rate if no adjustment in terms of labor costs is made
-  data_fig2$forecast_gross_tax_base <- data_fig2$turnover - data_fig2$costs
-  data_fig2$forecast_rate <- data_fig2$forecast_gross_tax_base/data_fig2$turnover 
+  ## Simulate 3-month-output-loss, material adjustment and labor adjustement
+  ## R - 3/12fR - c3 - c2 + 3/12fc2 - c1 + x3/12fc1, we want to find x:  
   
-  # Categorize firms with cases 1, 2 or 3 by comparing baseline rate and hypothetical rate
-  data_fig2$cases[data_fig2$baseline_rate <= 0 ] <- 1
-  data_fig2$cases[data_fig2$baseline_rate > 0 & data_fig2$forecast_rate <= 0 ] <- 2
-  data_fig2$cases[data_fig2$baseline_rate > 0 & data_fig2$forecast_rate > 0 ] <- 3
+  # A = R - 3/12fR - c3 - c2 + 3/12fc2
+  data_fig2$A <- data_fig2$turnover - data_fig2$factorloss*(3/12)*(data_fig2$turnover) - data_fig2$fixedcost - 
+    (data_fig2$material_inp) + data_fig2$factorloss*(3/12)*(data_fig2$material_inp)
   
-  ### Adujst costs differently depending on cases
-  ## 1 Full adjustment: adjust by the size of the shock
-  data_fig2$new_costs <- data_fig2$costs - (3/12)*(data_fig2$labor_inp)
-  data_fig2$costs <- ifelse(data_fig2$cases == 1, data_fig2$new_costs, data_fig2$costs) 
-  # Store drop in labor costs
-  data_fig2$reduction_labor <- (3/12)*(data_fig2$labor_inp)
+  ## x = factor of labor adjustment in order to break even
+  ## Set equation equal to Target = min {0, baseline profit}
+  data_fig2$Target <- pmin(0, data_fig2$gross_tax_base)
   
-  ## 2 Partial adjustment
-  # New optimal labor costs to have 0 losses
-  data_fig2$adjusted_labor <- data_fig2$costs - data_fig2$turnover 
-  # If reduction is more than 1/12 of original labor costs, then cap to 1/12
-  data_fig2$adjusted_labor <- ifelse(data_fig2$adjusted_labor > data_fig2$reduction_labor, data_fig2$reduction_labor, data_fig2$adjusted_labor)
-  # Recalculate total costs
-  data_fig2$costs <- ifelse(data_fig2$cases == 2, data_fig2$costs - data_fig2$adjusted_labor, data_fig2$costs) 
-  # Store drop in labor costs
-  data_fig2$reduction_labor <- ifelse(data_fig2$cases == 2, data_fig2$adjusted_labor, data_fig2$reduction_labor)
+  # x = (c1 - A + Target) / ((3/12)*f*c1)
+  data_fig2$x <- (data_fig2$labor_inp + data_fig2$Target - data_fig2$A)/(data_fig2$factorloss*(3/12)*data_fig2$labor_inp)
   
-  ## 3 No adjusment
-  # Store drop in labor costs
-  data_fig2$reduction_labor <- ifelse(data_fig2$cases == 3, 0, data_fig2$reduction_labor)
+  ## Some firms have labor input == 0, so create INF and NaN when we divide by 0. We replace x = NA for them.
+  data_fig2$x[is.na(data_fig2$x)] <- NA
+  data_fig2$x[is.infinite(data_fig2$x)] <- NA
+  summary(data_fig2$x)
   
-  # We will plot the drop in labor costs compared to baseline labor costs
-  data_fig2$newlabor_inp <- data_fig2$labor_inp - data_fig2$reduction_labor
-  data_fig2$ratio_labor <- 1 - (data_fig2$newlabor_inp/data_fig2$labor_inp)
-  # Change NAN (occurs when we divide 0/0) and Inf (occurs when we divide by 0) to 0
-  data_fig2$ratio_labor[is.infinite(data_fig2$ratio_labor)] <- 0
-  data_fig2$ratio_labor[is.nan(data_fig2$ratio_labor)] <- 0
-
+  # We now have three cases:
+  # x <= 0: firms are still making profit after the shock and don't need to adjust their payroll
+  data_fig2$x[data_fig2$x < 0] <- 0
+  # 0 < x < 1: firms need to reduce their payroll by the factor x so that then can break even
+  # x >= 1: firms would need (more than) their total monthly payroll to break even
+  data_fig2$x[data_fig2$x > 1] <- 1
+  data_fig2$ratio_labor <- (data_fig2$x*(3/12)*data_fig2$factorloss) 
+  summary(data_fig2$ratio_labor)
   ## Save 3-month-Scenario data in an object
-  scenario3 <- select(data_fig2, ratio_labor, labor_inp, reduction_labor)
-  scenario3$Scenario <- "3 months"
+  Scenario3 <- select(data_fig2, ratio_labor, labor_inp)
+  Scenario3$Scenario <- "3 months"
   
   ####### Combine Baseline, Scenario 1 and 3 in one dataframe 
-  figure2 <- rbind(scenario1, scenario3)
+  figure2 <- rbind(Scenario1, Scenario3)
   figure2$Scenario <- factor(figure2$Scenario, levels = c("1 month", "3 months"))
   figure2 <- figure2 %>% drop_na(ratio_labor)
   
@@ -320,18 +295,18 @@ library(ggformula) ## geom_spline
   
   # Import data from Stata (see survival model stata)
   data_fig3  <- read.csv(paste0(output, "\\survival_estimates.csv"), header = TRUE, sep = ",")
-  data_fig3$baseline <- data_fig3$predicted_1
-  data_fig3$moderate <- data_fig3$proba_shock1030
-  data_fig3$large <- data_fig3$proba_shock3050
-  data_fig3$verylarge <- data_fig3$proba_shock50p
+  data_fig3$baseline <- data_fig3$y_hat_1
+  data_fig3$moderate <- data_fig3$proba1_shock1030
+  data_fig3$large <- data_fig3$proba1_shock3050
+  data_fig3$verylarge <- data_fig3$proba1_shock50p
   
   # Confidence Interval
-  data_fig3$cipos_moderate <- data_fig3$moderate + 1.96 * (data_fig3$se_shock1030)
-  data_fig3$cineg_moderate <- data_fig3$moderate - 1.96 * (data_fig3$se_shock1030)
-  data_fig3$cipos_large <- data_fig3$large + 1.96 * (data_fig3$se_shock3050)
-  data_fig3$cineg_large <- data_fig3$large - 1.96 * (data_fig3$se_shock3050)
-  data_fig3$cipos_verylarge <- data_fig3$verylarge + 1.96 * (data_fig3$se_shock50p)
-  data_fig3$cineg_verylarge <- data_fig3$verylarge - 1.96 * (data_fig3$se_shock50p)
+  data_fig3$cipos_moderate <- data_fig3$moderate + 1.96 * (data_fig3$se1_shock1030)
+  data_fig3$cineg_moderate <- data_fig3$moderate - 1.96 * (data_fig3$se1_shock1030)
+  data_fig3$cipos_large <- data_fig3$large + 1.96 * (data_fig3$se1_shock3050)
+  data_fig3$cineg_large <- data_fig3$large - 1.96 * (data_fig3$se1_shock3050)
+  data_fig3$cipos_verylarge <- data_fig3$verylarge + 1.96 * (data_fig3$se1_shock50p)
+  data_fig3$cineg_verylarge <- data_fig3$verylarge - 1.96 * (data_fig3$se1_shock50p)
   
   ## Select and rename
   data_fig3_0 <- select(data_fig3, baseline, moderate, large, verylarge, country)
@@ -436,7 +411,7 @@ graph_3_fun <- function(dataset, country_name){
   dataset$cineg <- dataset$cineg*100 
   p <- ggplot(dataset, aes(x = Measure, y = value, fill = Measure)) +  geom_bar(stat = "identity", width = 0.8) +
     geom_errorbar(data = dataset, mapping = aes(x = Measure, ymin = cineg, ymax = cipos), width = 0.3, size = 0.2) 
-  p <- p + scale_fill_manual(values = c( "Baseline" = "grey", "1-3\nmonths" ="tomato", "3-6\nmonths" = "firebrick3", "More\nthan\n6months" = "brown4")) + scale_y_continuous(limits = c(0, 18), breaks = c(0, 4, 8, 12, 16)) 
+  p <- p + scale_fill_manual(values = c( "Baseline" = "grey", "1-3\nmonths" ="tomato", "3-6\nmonths" = "firebrick3", "More\nthan\n6months" = "brown4")) + scale_y_continuous(limits = c(0, NA)) 
   print(p + labs(y = "Share of firms exiting", x = "") + theme_minimal() + theme(legend.position = "none", axis.text = element_text(size = 14),  axis.title.x = element_text(size = 16, vjust = -0.5), axis.title.y = element_text(size = 16, margin = margin(r = 10)), plot.title = element_text(size = 22)))                                                                                 
 }
 
