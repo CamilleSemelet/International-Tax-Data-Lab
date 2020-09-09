@@ -915,7 +915,7 @@ graph_5_fun(figure_5)
 dev.off()
 
 ################################### EXTRACT METADATA ###############################	
-source(paste0(dofiles,"function_metadata.R"))	
+
 ## Figure 1 a	
 df <- list()	
 for (i in 1:length(sectors)){	
