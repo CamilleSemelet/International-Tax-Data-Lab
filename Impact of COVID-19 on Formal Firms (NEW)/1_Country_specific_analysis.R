@@ -829,6 +829,49 @@ graph_5_fun <- function(dataset){
 }
 graph_5_fun(figure_5)
 
+############################### FUNCTIONS FOR METADATA ################################
+### Share of firms profitable
+FUN_share_profitable = function(dataset){
+  share_profitability <- dataset %>% group_by(Scenario) %>%
+    summarize(N = n(), N_profitable = length(profit_margin[profit_margin >= 0])) %>% 
+    mutate(profitable_firms = N_profitable/N*100)
+}
+
+### Loss in CIT compared to Baseline
+FUN_loss_cit = function(dataset){
+  loss_cit <- dataset[ which(dataset$gross_tax_base > 0),]
+  loss_cit <- loss_cit %>%  group_by(Scenario) %>% 
+    summarize(cit_revenue = sum(gross_tax_base*statutory_rate)) %>% ungroup() %>%
+    summarize(loss_cit_3 = 100*(cit_revenue[Scenario == "Baseline"] -
+                                  cit_revenue[Scenario == "3 months"])/
+                cit_revenue[Scenario == "Baseline"],
+              loss_cit_5 = 100*(cit_revenue[Scenario == "Baseline"] -
+                                  cit_revenue[Scenario == "5 months"])/
+                cit_revenue[Scenario == "Baseline"])
+}
+
+## Aggregate loss in payroll
+FUN_payroll_marginal = function(dataset){
+  dataset <- dataset %>% group_by(Scenario) %>% 
+    summarise(N = sum(!is.na(ratio_labor)), 
+              N_marginal = length(ratio_labor[ratio_labor != 0 & ratio_labor != max(ratio_labor, na.rm = TRUE)])) %>%
+    mutate(share_margin = 100*N_marginal/N)
+}
+## Average loss in payroll
+FUN_payroll_avgdrop= function(dataset){
+  dataset <- dataset %>% group_by(Scenario) %>% 
+    summarise(avg_drop = mean(ratio_labor, na.rm = TRUE))
+}
+
+## Agregate loss after wage subsidy
+FUN_subsidy = function(dataset){
+  dataset <- dataset[ which(dataset$subsidy == 0.0 | dataset$subsidy == 0.5 |dataset$subsidy == 0.9),]
+  dataset <- dataset %>% group_by(Scenario) %>% 
+    summarise(diff_aggloss_50 = aggregateloss[subsidy == 0.0] - aggregateloss[subsidy == 0.5],
+              diff_aggloss_90 = aggregateloss[subsidy == 0.0] - aggregateloss[subsidy == 0.9],
+              ratio_aggloss_50 = aggregateloss[subsidy == 0.0] / aggregateloss[subsidy == 0.5],
+              ratio_aggloss_90 = aggregateloss[subsidy == 0.0] / aggregateloss[subsidy == 0.9],)
+}
 
 ################################## EXTRACT GRAPHS #################################
 setwd(output)
