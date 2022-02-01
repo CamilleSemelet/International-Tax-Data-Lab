@@ -1,51 +1,52 @@
 * Description:
 
 * GOAL: this files creates a set of cross country graphs using micro tax data from different countries
-* PECULIARITIES: The script is constructed to be ran on several countries at once.  
+* PECULIARITIES: The script is constructed to be ran on several countries at once, using globals  
 *                As such, there are functions or loops that can appear redundant if run on only one country.
 *               
 * ORGANIZATION: 
 * 1) Load data, create new variables
 * 2) ETR and decile functions: build ETR variables depending on denominator choice and data types 
 * 3) Subset functions: extract the variables we want for each subset 
-* 4) Append dataframe for each country (only one coutry for DOM)
+* 4) Dataframes
 * 5) Regressions
 * 6) Extract meta-data (commented out here)
 * 7) Graphs
 
-* External file we merge: WDI data from the World Bank. File is attached. 
+* External file we merge: WDI data from the World Bank. We use GDP, GDP pc, CPI indices and exchange rates to convert from LCU to current USD.
 
-** List of variables we use in the code:
+** List of variables we have in the clean data:
 *tax_ID        turnover      taxable_income  capital_inp   non_deduc_inp  taxable_profit  other_ded_taxbase  gross_tax_liability  tot_deduc_taxliab  other_cred_taxliab  descr_section
 *year          other_income  labor_inp     financial_inp  tot_cost     investment_taxbase  tot_deduc_taxbase  cred_foreign_tax  net_tax_liab  tax_to_remit  
-*country       exempt_income  material_inp  depreciation  deductible_cost  capital_allowance  gross_tax_base  investment_taxliab  partial_advanced_pay ficto
+*country       exempt_income  material_inp  depreciation  deductible_cost  capital_allowance  gross_tax_base  investment_taxliab  partial_advanced_pay 
 *total_income  operating_inp  other_inp     net_profit    loss_carryforward  net_tax_base  other_cred_taxliab  withholding   section  
 
 ******************************* 1. SET UP **********************************
 
 * Paths & objects  we organized our outputs in many folders, you can have only one)
-gl main_directory"\\192.168.189.47\Asesoria_Economica\2021_BM"   
-gl directory "D:\Crosscountrytax\proc_data\Rwanda" 
-gl output "D:\Crosscountrytax\proc_data\Rwanda\RWA"
-gl WDI_loc "C:\Users\s551964\Cross-Country\distributional-statistics\data" // Where the WDI data is located. 
 
-gl country_name "Rwanda"  //  We use this in many parts of the code
-gl country_code "RWA"  //  Country code is used to call the object 'files' (see below) & to save all graphs at once (end of script)
+gl main_directory "xxxx"   
+gl directory "xxxx" 
+gl output "xxxx"
+gl WDI_loc "xxxx" // Where the WDI data is located. 
+
+gl country_name "Xxxx"  //  We use this in many parts of the code
+gl country_code "XXX"  //  Country code is used to call the object 'files' (see below) & to save all graphs at once (end of script)
 
 ssc install egenmore
 ************************ a. Directory and Functions  ********************************* 
 
 *----------- Load data (we have different directories for different countries, here you can set it to proc_data only)
   cd $directory
-  import delimited "RWA_withvars.csv", clear case(preserve)
-  tempfile URY_withvars
-  save `URY_withvars'
+  import delimited "XXXX.csv", clear case(preserve) // load cleaned data
+  tempfile XXX_withvars
+  save `XXX_withvars'
 
 ************************ b. Samples and new variables  ********************************* 
 
 *----------- Merge World Development Index Data:
  cd $WDI_loc
-  import delimited "WDI_vars.csv", clear case(preserve)
+  import delimited "WDI_vars.csv", clear case(preserve) // import cleaned WDI data
   gen log_GDP_pc = log(GDP_pc_currentUSD)
   tempfile WDI_loc
   save `WDI_loc'
@@ -61,7 +62,7 @@ ssc install egenmore
   tempfile WDI_loc
   save `WDI_loc'
    
-  use `URY_withvars', clear
+  use `XXX_withvars', clear
   merge m:1 country year using `WDI_loc', keep (3)
   drop _merge
 * Adjust and convert   
@@ -71,10 +72,10 @@ ssc install egenmore
   gen log_turn_usd = cond(total_income>0, log(turnover_usdadj), .)
 
 *------------ Code STR 
-gen STR = 0.3
+gen STR = XXX // Need to aadapt here according to country's CIT, if there are size-dependant thresholds or if the rate changes accross years.
   
-  * If sample restrictions are needed, make them there. For example, we drop firms with a special regime, in the case of URY, we drop firms under the ficto regime
-keep if CIT_normal_regime == 1 & year <= 2016
+  * If sample restrictions are needed, make them there. For example, drop firms with a special regime
+*keep if CIT_normal_regime == 1 
 
 *----------- CREATE GROSS PROFIT CONCEPTS:
 * Different cases: Material missing because its 0, or because it's unknown. 
@@ -89,7 +90,7 @@ gen els = cond(other_inp!=., other_inp, 0)
 gen cap = cond(other_inp!=., other_inp, 0)
 gen dep = cond(depreciation!=., depreciation, 0)
 
-    ** Create different profit variables (we use absoolute value because negative costs don't make sense. Could have been filled with a negative sign in front by mistake')
+    ** Create different profit variables (we use absoolute value because negative costs don't make sense. Could have been filled with a negative sign in front by mistake.)
         * Turnover - Material Costs
 gen GP_m = total_income - abs(mat)
         * Turnover - Material Costs - Labor Costs (==Gross Profit)
@@ -107,7 +108,7 @@ gen NP = net_profit
 gen net_profit_pos = cond(net_profit <0, 0 , net_profit) 
                           
  /*       ** Dummy if variable exists in the country 
- * (sometimes one concept cannot be constructed if variable is missing, but will still appear as different that missing because we set those var to 0. Construct a dummy to store this information)
+ * (sometimes one concept cannot be constructed if variable is missing, but will still appear as different than missing because we set those var to 0. Construct a dummy to store this information)
                           dum_GPm = cond(all(missing(c(temp$material_inp))) == "FALSE", 1, 0),
                           dum_GPml = cond(all(missing(c(temp$labor_inp))) == "FALSE" & dum_GPm==1, 1, 0),
                           dum_GPmlo = cond(all(missing(c(temp$operating_inp))) == "FALSE", 1, 0),
@@ -140,7 +141,7 @@ replace largesector = cond(sector=="Services" | section=="K" | section == "J" | 
 
 
 *----------- Sample restriction for all: 
-* - keep only firms with turnover > 1. Some firms report 0.1 turnover. Limiting to 0 would still produce outlier ratios.
+* - keep only firms with turnover > 1. Some firms can report 0.1 of turnover. Limiting to 0 would still produce outlier ratios.
 cd $output
 
 * Panel version of the data.
@@ -660,7 +661,7 @@ save "df.ETR.largesector.dta", replace
 save "df.ETR.GDP.dta", replace 
 
 *********************************** 5. REGRESSIONS  ********************************************
-/*
+
 program regressions // Need explvar
 
  keep if !missing(ETR_keep_neg) & !missing($explvar) // data is at the country level
@@ -867,7 +868,6 @@ gl explvar "top99"
 gl reg_name "d10.top99"
 regressions
 
-*/
 
 *********************************** 6. EXTRACT META-DATA  ********************************************
 * * Section not useful for if working when having access to all data.  
@@ -1143,7 +1143,7 @@ ytitle("Effective Tax Rate (%)") ;
 end
 
 use  "df.ETR.logscale.dta", clear
-drop if bin ==22 | bin==.
+drop if bin==.
 gl ETR_denominator "Net Profit"
 ETR_logscale_GRAPH
 graph export "ETRavg_log_NP_$country_code.png", replace
