@@ -1,9 +1,14 @@
-* Description:
+* Effective Tax Rates and Firm Size
+* Pierre Bachas, Anne Brockmeyer, Roel Dom and Camille Semelet
+* Code last update: 04/02/2022
 
-* GOAL: this files creates a set of cross country graphs using micro tax data from different countries
-* PECULIARITIES: The script is constructed to be ran on several countries at once, using globals  
-*                As such, there are functions or loops that can appear redundant if run on only one country.
-*               
+
+* DESCRIPTION:
+* This files creates a set of cross country graphs on the relationship between effective tax rate and firm size
+* using micro tax data from different countries
+* The do is constructed to be ran on several countries at once, using globals  
+* As such, there are functions or loops that can appear redundant if run on only one country.
+
 * ORGANIZATION: 
 * 1) Load data, create new variables
 * 2) ETR and decile functions: build ETR variables depending on denominator choice and data types 
