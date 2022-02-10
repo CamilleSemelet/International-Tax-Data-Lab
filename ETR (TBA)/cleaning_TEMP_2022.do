@@ -1,18 +1,11 @@
 /* 
  
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * * * * * * * *
-*
-* 	CIT DATA CLEANING - HARMONIZATION TEMPLATE
-* 
-*	CREATED: 		09/02/2022 
-*
-* 	LAST MODIFIED: 	
-*
-* 	NOTE: This do-file provides an harmonized breakdown of variables and concepts to clean administrative corporate income data.
-*             This harmonization work is based on observations of CIT returns in more than 15 low- and middle-income countries.
-*
-*
-* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+CIT DATA CLEANING - HARMONIZATION TEMPLATE
+Pierre Bachas, Anne Brockmeyer, Joseph Massad, Camille Semelet
+LAST MODIFIED:	09/02/2022 
+
+Description: This do-file provides an harmonized breakdown of variables and concepts to clean administrative corporate income data.
+             This harmonization work is based on observations of CIT returns in more than 15 low- and middle-income countries.
 
  Do file notes:
  1. Metavariables can be found directly in the data, or will have to be built. 
