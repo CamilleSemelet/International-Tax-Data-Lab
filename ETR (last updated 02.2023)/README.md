@@ -5,7 +5,7 @@
 This paper provides novel evidence on the relationship between firm size and effective corporate tax rates (ETRs) using full-population administrative tax data from 13 countries. In all countries, small firms face lower ETRs than mid-sized firms due to reduced statutory tax rates and a higher propensity to register losses. In most countries, ETRs fall for the largest firms due to the take-up of tax incentives. As a result, a third of the top 1% of firms face ETRs below the global minimum tax of 15%. The minimum tax could raise corporate tax revenue by 27% in the median sample country.    
 
 ### Replication codes:
-The study uses confidential administrative tax data that cannot be shared publically. 
+The study uses confidential administrative tax data that cannot be shared publicly. 
 However, we provide the replications codes of the study so that the analysis can be run on another country based on Corporate Income Tax returns by tax administrations or other researchers with access to such data. 
 Further, the analysis can still be run on data for Mexico, which has been released as OpenSource data. 
 
