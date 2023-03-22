@@ -1,7 +1,7 @@
 # Effective Tax Rates and Firm Size 
 ## Pierre Bachas, Anne Brockmeyer, Roel Dom and Camille Semelet.
-
-### Abstract (draft coming soon):
+### <a href="https://cepr.org/system/files/publication-files/DP17985.pdf">CEPR Working paper, March 2023</a>
+### Abstract:
 This paper provides novel evidence on the relationship between firm size and effective corporate tax rates (ETRs) using full-population administrative tax data from 13 countries. In all countries, small firms face lower ETRs than mid-sized firms due to reduced statutory tax rates and a higher propensity to register losses. In most countries, ETRs fall for the largest firms due to the take-up of tax incentives. As a result, a third of the top 1% of firms face ETRs below the global minimum tax of 15%. The minimum tax could raise corporate tax revenue by 27% in the median sample country.    
 
 ### Replication codes:
